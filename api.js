@@ -6,7 +6,7 @@ function factory(e) {
   // 1. 處理吃飯紀錄 (來自手機)
   if (params.source == "mobile") {
     // 簡化判斷式
-    const sheetName = (params.user == 77) ? "77吃飯" : "芬達吃飯";
+    const sheetName = getCatSheetName(params.user);
     eatFood(params, sheetName);
     return; // 執行完提早結束
   } 
@@ -26,7 +26,7 @@ function factory(e) {
 }
 
 function eatFood(params, sheetName) {
-  const SpreadSheet = SpreadsheetApp.openById('15SooPjS1LNik2QPr6CYoIJfvaUV0GY6Fxfp6v8knKMo');
+  const SpreadSheet = getSpreadsheet();
   const Sheet = SpreadSheet.getSheetByName(sheetName); 
   if (!Sheet) return;
 
@@ -38,9 +38,9 @@ function eatFood(params, sheetName) {
   const targetKey = params.event;
 
   // 使用 Date 物件，之後寫入時讓 Sheets 自動套用已設定好的格式
-  const now = new Date();
-  const dateOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const timeOnly = new Date(0, 0, 0, now.getHours(), now.getMinutes(), now.getSeconds());
+  const now = getNowInTimezone();
+  const dateOnly = getTodayStart();
+  const timeOnly = createTime(now.getHours(), now.getMinutes(), now.getSeconds());
 
   // 從 i = 1 開始 (跳過標題)
   for (let i = 1; i < configData.length; i++) {
@@ -71,20 +71,20 @@ function eatFood(params, sheetName) {
 // ----------------------------------------------------
 
 function noteLitterBoxWeight(params) {
-  const SpreadSheet = SpreadsheetApp.openById('15SooPjS1LNik2QPr6CYoIJfvaUV0GY6Fxfp6v8knKMo');
-  const Sheet = SpreadSheet.getSheetByName("貓砂");
+  const SpreadSheet = getSpreadsheet();
+  const Sheet = SpreadSheet.getSheetByName(CONFIG.SHEETS.LITTER);
   
   // ✨ 順手幫你把日期時間升級成最安全的台北時區格式，避免 Siri 紀錄時跨天跑版
-  const now = new Date();
-  const dateStr = Utilities.formatDate(now, "Asia/Taipei", "yyyy/MM/dd");
-  const timeStr = Utilities.formatDate(now, "Asia/Taipei", "HH:mm");
+  const now = getNowInTimezone();
+  const dateStr = formatDate(now);
+  const timeStr = formatTime(now);
   
   // 取得 Siri 傳來的貓咪名字
-  const catName = params.name;
+  const catName = toString(params.name);
   
   // ✨ 核心邏輯：接收 Siri 傳來的「狀態」。如果 Siri 沒傳，就預設為「正常大便」
   // 這樣你原本只喊「紀錄芬達貓砂」的舊捷徑也不會壞掉！
-  let litterType = params.type || "正常大便"; 
+  let litterType = toString(params.type) || "正常大便"; 
   
   // 依序寫入: A欄(日期), B欄(時間), C欄(動物), D欄(備註=狀態)
   Sheet.appendRow([dateStr, timeStr, catName, litterType]); 
@@ -94,39 +94,39 @@ function noteLitterBoxWeight(params) {
 
 // 1. 寫入貓砂紀錄
 function addLitterRecord(catName, date, time, type, notes) {
-  const ss = SpreadsheetApp.openById('15SooPjS1LNik2QPr6CYoIJfvaUV0GY6Fxfp6v8knKMo'); // 替換成你的 ID
-  const sheet = ss.getSheetByName("貓砂");
+  const ss = getSpreadsheet();
+  const sheet = getSheet(CONFIG.SHEETS.LITTER);
   if (!sheet) throw new Error("找不到『貓砂』試算表");
   
   // ✨ 修復核心：把前端的 "2026-03-23" 強制轉成試算表最愛的 "2026/03/23"
-  let formattedDate = date.replace(/-/g, '/');
+  let formattedDate = toString(date).replace(/-/g, '/');
   
-  let finalNotes = type;
-  if (notes) finalNotes += " - " + notes;
+  let finalNotes = toString(type);
+  if (notes) finalNotes += " - " + toString(notes);
   
   sheet.appendRow([formattedDate, time, catName, finalNotes]);
   return "貓砂紀錄已儲存！";
 }
 
 function noteCatWeight(params) {
-  const SpreadSheet = SpreadsheetApp.openById('15SooPjS1LNik2QPr6CYoIJfvaUV0GY6Fxfp6v8knKMo');
-  const Sheet = SpreadSheet.getSheetByName("體重");
+  const SpreadSheet = getSpreadsheet();
+  const Sheet = SpreadSheet.getSheetByName(CONFIG.SHEETS.WEIGHT);
 
-  const now = new Date();
-  const dateOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const timeOnly = new Date(0, 0, 0, now.getHours(), now.getMinutes(), now.getSeconds());
+  const now = getNowInTimezone();
+  const dateOnly = getTodayStart();
+  const timeOnly = createTime(now.getHours(), now.getMinutes(), now.getSeconds());
 
   // 依序寫入: A欄(日期), B欄(時間), C欄(體重), D欄(使用者)
   Sheet.appendRow([dateOnly, timeOnly, params.weight, params.user]); 
 }
 
 function noteCatDrinkWater(params) {
-  const SpreadSheet = SpreadsheetApp.openById('15SooPjS1LNik2QPr6CYoIJfvaUV0GY6Fxfp6v8knKMo');
-  const Sheet = SpreadSheet.getSheetByName("喝水");
+  const SpreadSheet = getSpreadsheet();
+  const Sheet = SpreadSheet.getSheetByName(CONFIG.SHEETS.WATER);
 
-  const now = new Date();
-  const dateOnly = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const timeOnly = new Date(0, 0, 0, now.getHours(), now.getMinutes(), now.getSeconds());
+  const now = getNowInTimezone();
+  const dateOnly = getTodayStart();
+  const timeOnly = createTime(now.getHours(), now.getMinutes(), now.getSeconds());
 
   // 依序寫入: A欄(日期), B欄(時間), C欄(水量), D欄(種類)
   Sheet.appendRow([dateOnly, timeOnly, params.weight, params.type]); 
@@ -137,8 +137,12 @@ function noteCatDrinkWater(params) {
 // ----------------------------------------------------
 
 function getLastFeed(SpreadSheet) {
-  const sheets = [SpreadSheet.getSheetByName("芬達吃飯"), SpreadSheet.getSheetByName("77吃飯")];
-  const catNames = ["芬達", "七七"]; // 幫你補上原本遺失的變數，避免報錯
+  const sheets = [
+    SpreadSheet.getSheetByName(CONFIG.SHEETS.FENDA_FEED),
+    SpreadSheet.getSheetByName(CONFIG.SHEETS.SEVENSEVEN_FEED)
+  ];
+  const sheetNames = [CONFIG.SHEETS.FENDA_FEED, CONFIG.SHEETS.SEVENSEVEN_FEED];
+  const catNames = sheetNames.map(name => getCatDisplayName(name));
   let responses = [];
 
   for (let i = 0; i < sheets.length; i++) {
@@ -151,9 +155,9 @@ function getLastFeed(SpreadSheet) {
     // 【效能優化】：一次把 B 欄到 E 欄 (2~5) 的資料讀出來
     let rowData = sheet.getRange(lastRow, 2, 1, 4).getDisplayValues()[0];
     
-    let timeValue = rowData[0]; // B欄: 時間
-    let foodName = rowData[1];  // C欄: 食物名
-    let weight = rowData[3];    // E欄: 重量 (索引3)
+    let timeValue = toString(rowData[0]); // B欄: 時間
+    let foodName = toString(rowData[1]);  // C欄: 食物名
+    let weight = toString(rowData[3]);    // E欄: 重量 (索引3)
 
     responses.push(`${catNames[i]}最後進食時間是 ${timeValue}，吃的是 ${foodName}，重量 ${weight} 克。`);
   }
@@ -161,13 +165,16 @@ function getLastFeed(SpreadSheet) {
   return "報告主人：" + responses.join(" ");
 }
 function getTodayTotal(SpreadSheet) {
-  const sheets = [SpreadSheet.getSheetByName("芬達吃飯"), SpreadSheet.getSheetByName("77吃飯")];
-  const catNames = ["芬達", "七七"];
+  const sheets = [
+    SpreadSheet.getSheetByName(CONFIG.SHEETS.FENDA_FEED),
+    SpreadSheet.getSheetByName(CONFIG.SHEETS.SEVENSEVEN_FEED)
+  ];
+  const sheetNames = [CONFIG.SHEETS.FENDA_FEED, CONFIG.SHEETS.SEVENSEVEN_FEED];
+  const catNames = sheetNames.map(name => getCatDisplayName(name));
   let responses = [];
 
   // 取得今天 00:00:00 的時間物件進行比較
-  const now = new Date();
-  const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const todayStart = getTodayStart().getTime();
 
   for (let i = 0; i < sheets.length; i++) {
     let sheet = sheets[i];
@@ -194,9 +201,9 @@ function getTodayTotal(SpreadSheet) {
         let rowDateTime = new Date(rowDate.getFullYear(), rowDate.getMonth(), rowDate.getDate()).getTime();
 
         if (rowDateTime === todayStart) {
-          let calories = parseFloat(row[8]) || 0;     // I 欄：熱量
-          let waterAdded = parseFloat(row[6]) || 0;   // G 欄：加水
-          let waterInCan = parseFloat(row[9]) || 0;   // J 欄：罐頭含水量
+          let calories = toNumber(row[8], 0);     // I 欄：熱量
+          let waterAdded = toNumber(row[6], 0);   // G 欄：加水
+          let waterInCan = toNumber(row[9], 0);   // J 欄：罐頭含水量
           
           dailyCalories += calories;
           dailyWater += (waterAdded + waterInCan);

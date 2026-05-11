@@ -1,5 +1,5 @@
 function autoFeedPlan0300() {  
-  var sheetNames = ["芬達吃飯","77吃飯"];  
+  var sheetNames = [CONFIG.SHEETS.FENDA_FEED, CONFIG.SHEETS.SEVENSEVEN_FEED];  
 
   for (var i = 0; i < sheetNames.length; i++) {
     eatFood({event: "凌晨"}, sheetNames[i]);
@@ -46,12 +46,12 @@ function deleteSchedule(id) {
 // 4. 建立巡邏隊長 (每小時執行一次)
 function setupMasterTrigger() {
   const triggers = ScriptApp.getProjectTriggers();
-  const hasTrigger = triggers.some(t => t.getHandlerFunction() === 'runScheduledFeedings');
+  const hasTrigger = triggers.some(t => t.getHandlerFunction() === CONFIG.TRIGGER_HANDLER);
   
   if (!hasTrigger) {
-    ScriptApp.newTrigger('runScheduledFeedings')
+    ScriptApp.newTrigger(CONFIG.TRIGGER_HANDLER)
       .timeBased()
-      .everyHours(1) // 每小時巡邏一次
+      .everyHours(CONFIG.TRIGGER_INTERVAL) // 每小時巡邏一次
       .create();
   }
 }
@@ -60,7 +60,7 @@ function setupMasterTrigger() {
 function removeMasterTrigger() {
   const triggers = ScriptApp.getProjectTriggers();
   triggers.forEach(t => {
-    if (t.getHandlerFunction() === 'runScheduledFeedings') {
+    if (t.getHandlerFunction() === CONFIG.TRIGGER_HANDLER) {
       ScriptApp.deleteTrigger(t);
     }
   });
@@ -69,16 +69,16 @@ function removeMasterTrigger() {
 // 6. 🚨 核心執行程式 (時間到了會由 Google 伺服器在背景自動呼叫)
 function runScheduledFeedings() {
   // 設定為台北時區
-  const now = new Date();
-  const tzStr = Utilities.formatDate(now, "Asia/Taipei", "yyyy-MM-dd HH:mm");
+  const now = getNowInTimezone();
+  const tzStr = Utilities.formatDate(now, CONFIG.TIMEZONE, "yyyy-MM-dd HH:mm");
   const currentDate = tzStr.split(' ')[0]; // 取得 YYYY-MM-DD
-  const currentHour = parseInt(tzStr.split(' ')[1].split(':')[0], 10); // 取得現在是幾點 (0~23)
+  const currentHour = getHourFromTime(tzStr.split(' ')[1]); // 取得現在是幾點 (0~23)
 
   let schedules = getSchedules();
   
   schedules.forEach(schedule => {
     // schedule.time 格式為 "16:00"
-    let schedHour = parseInt(schedule.time.split(':')[0], 10);
+    let schedHour = getHourFromTime(schedule.time);
     
     // 如果「現在的小時」等於「設定的小時」，就執行餵食紀錄！
     if (currentHour === schedHour) {

@@ -14,9 +14,10 @@ function generateAndEmailPDF(catName, startDate, endDate, emails, chartsBase64, 
     // 3. ✨ 如果有勾選 AI 分析，就在背景偷偷呼叫 Gemini！
     let aiSectionHtml = "";
     if (includeAI) {
-      const API_KEY = "AIzaSyB7lyB1tEIuT5umDglcQA1WUo8OmMsGsPQ"; // ⚠️ 記得貼上你的 Key！
+      const API_KEY = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY') || CONFIG.GEMINI_API_KEY;
       
       const logText = getRawDataForAI(catName, startDate, endDate);
+      const tz = CONFIG.TIMEZONE;
       const prompt = `你是一位專業且細心的貓咪獸醫助理。這是一份 ${catName} 從 ${startDate} 到 ${endDate} 的健康數據：\n${logText}\n請針對這些數據寫一段綜合分析摘要（250字以內），指出值得注意的異常（如嘔吐、亂尿尿、水量變少），並給出專業建議。請用繁體中文，語氣溫和客觀。`;
       
       const url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=" + API_KEY;
@@ -58,7 +59,7 @@ function generateAndEmailPDF(catName, startDate, endDate, emails, chartsBase64, 
           <h1>${pdfFormalTitle}</h1>
           <div class="info-box">
             <p style="margin: 5px 0;"><strong>📆 統計區間：</strong> ${startDate} ~ ${endDate}</p>
-            <p style="margin: 5px 0;"><strong>📝 報告產出時間：</strong> ${Utilities.formatDate(new Date(), "Asia/Taipei", "yyyy/MM/dd HH:mm")}</p>
+            <p style="margin: 5px 0;"><strong>📝 報告產出時間：</strong> ${formatDateTime(new Date())}</p>
           </div>
           
           ${aiSectionHtml}

@@ -1,7 +1,7 @@
 function handleCatFeeding(ss, sheet, catName, row) {
   // 取得剛剛編輯的那一列，第 4 欄的食物種類 (假設這是字串，例如 "濕食" 或 "乾飼料")
   const feedType = sheet.getRange(row, 4).getValue(); 
-  const feedSheet = ss.getSheetByName("飼料清單");
+  const feedSheet = getSheet(CONFIG.SHEETS.FEED_LIST);
 
   // 【效能優化核心】不要一次一次取，一次把 F2:H5 (列2~5，欄6~8) 範圍的資料讀進陣列
   // configData[0] 就是 Row 2 (芬達濕食)，以此類推
@@ -10,12 +10,12 @@ function handleCatFeeding(ss, sheet, catName, row) {
   // 【查表法】建立一個貓咪專屬的「設定字典」，對應你原本的 if/else
   // 結構：{ "貓名": { "食物名稱": { weight: 重量, water: 水量 } } }
   const feedConfig = {
-    "芬達吃飯": {
+    [CONFIG.SHEETS.FENDA_FEED]: {
       [configData[0][0]]: { weight: configData[0][1], water: configData[0][2] }, // 芬達濕食 (Row 2)
       [configData[1][0]]: { weight: configData[1][1], water: configData[1][2] },  // 芬達乾糧 (Row 3)
       [configData[2][0]]: { weight: configData[2][1], water: configData[2][2] }  // 芬達營養液 (Row 4)
     },
-    "77吃飯": {
+    [CONFIG.SHEETS.SEVENSEVEN_FEED]: {
       [configData[3][0]]: { weight: configData[3][1], water: configData[3][2] }, // 77濕食 (Row 5)
       [configData[4][0]]: { weight: configData[4][1], water: configData[4][2] }  // 77乾糧 (Row 6)
     }
@@ -32,7 +32,7 @@ function handleCatFeeding(ss, sheet, catName, row) {
     // 找到對應食物，寫入重量與水量
     setFoodWeight(sheet, row, foodSetting.weight);
     setWaterVolume(sheet, row, foodSetting.water);
-  } else if (catName === "77吃飯") {
+  } else if (catName === CONFIG.SHEETS.SEVENSEVEN_FEED) {
     // 找不到對應食物，且是你原本設定 77 的防呆邏輯
     setFoodWeight(sheet, row, -1);
     setWaterVolume(sheet, row, -1);
@@ -45,16 +45,15 @@ function handleCatFeeding(ss, sheet, catName, row) {
 // ================= ✨ 食慾評鑑系統 (P欄專用版 + 智慧過期過濾) =================
 function getUnratedRecords(catName) {
   try {
-    const ss = SpreadsheetApp.openById('15SooPjS1LNik2QPr6CYoIJfvaUV0GY6Fxfp6v8knKMo'); // 你的試算表 ID
-    const sheet = ss.getSheetByName(catName + "吃飯");
+    const ss = getSpreadsheet();
+    const sheet = getSheet(catName + "吃飯");
     if (!sheet) return [];
 
     const data = sheet.getDataRange().getValues();
     let unrated = [];
     
     // ✨ 計算「昨天」的凌晨 00:00 的時間基準點
-    let now = new Date();
-    let yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+    const yesterday = getYesterdayStart();
 
     const startIndex = Math.max(1, data.length - 30);
 
@@ -70,9 +69,9 @@ function getUnratedRecords(catName) {
 
       // ✨ 判斷：有填食物、沒填食慾、是有效日期、而且「日期必須大於或等於昨天」！
       if (foodName !== "" && appetite === "" && isValidDate && recordDate >= yesterday) {
-        let dateStr = Utilities.formatDate(recordDate, "Asia/Taipei", "M/d");
+        let dateStr = formatSimpleDate(recordDate);
         let timeObj = row[1];
-        let timeStr = (timeObj instanceof Date) ? Utilities.formatDate(timeObj, "Asia/Taipei", "HH:mm") : String(timeObj);
+        let timeStr = formatTime(timeObj);
 
         unrated.push({
           rowIndex: i + 1,
@@ -92,8 +91,8 @@ function getUnratedRecords(catName) {
 // 2. 使用者點擊表情符號後，更新該筆紀錄的食慾分數
 function updateAppetiteScore(catName, rowIndex, score) {
   try {
-    const ss = SpreadsheetApp.openById('15SooPjS1LNik2QPr6CYoIJfvaUV0GY6Fxfp6v8knKMo');
-    const sheet = ss.getSheetByName(catName + "吃飯");
+    const ss = getSpreadsheet();
+    const sheet = getSheet(catName + "吃飯");
     if (!sheet) return { success: false, message: "找不到表單" };
 
     // ✨ 改這裡！直接在該行的第 16 欄 (P 欄) 寫入分數
@@ -110,8 +109,8 @@ function updateAppetiteScore(catName, rowIndex, score) {
 
 function getCatAppetiteStats(catName, startDateStr, endDateStr) {
   try {
-    const ss = SpreadsheetApp.openById('15SooPjS1LNik2QPr6CYoIJfvaUV0GY6Fxfp6v8knKMo');
-    const sheet = ss.getSheetByName(catName + "吃飯");
+    const ss = getSpreadsheet();
+    const sheet = getSheet(catName + "吃飯");
     if (!sheet) return { error: "找不到表單" };
 
     const data = sheet.getDataRange().getValues();
@@ -127,7 +126,7 @@ function getCatAppetiteStats(catName, startDateStr, endDateStr) {
 
       if (dateVal >= start && dateVal <= end) {
         // ✨ 改用與其他圖表一致的 M/d 格式
-        let dateStr = (dateVal.getMonth() + 1) + "/" + dateVal.getDate(); 
+        let dateStr = formatSimpleDate(dateVal);
         let appetite = row[15]; 
         
         if (appetite !== "" && !isNaN(appetite)) {
@@ -144,7 +143,7 @@ function getCatAppetiteStats(catName, startDateStr, endDateStr) {
 
     // ✨ 強制補齊區間內的所有日期，確保有空檔的日子紅線也能畫得出來！
     for (let tempD = new Date(start); tempD <= end; tempD.setDate(tempD.getDate() + 1)) {
-      let dStr = (tempD.getMonth() + 1) + "/" + tempD.getDate();
+      let dStr = formatSimpleDate(tempD);
       labels.push(dStr);
       if (stats[dStr]) {
         avgScores.push((stats[dStr].totalScore / stats[dStr].count).toFixed(1)); 
