@@ -1,0 +1,24 @@
+{
+  "name": "petcare",
+  "version": "1.0.0",
+  "description": "",
+  "main": "api.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/edwin0706112233/PetCare.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/edwin0706112233/PetCare/issues"
+  },
+  "homepage": "https://github.com/edwin0706112233/PetCare#readme",
+  "devDependencies": {
+    "@types/google-apps-script": "^2.0.8"
+  }
+}

@@ -1,0 +1,855 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <base target="_top">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation"></script>
+    <style>
+      body { font-family: 'Helvetica Neue', sans-serif; background-color: #f4f7f6; padding: 15px; margin: 0; }
+      .app-container { width: 100%; max-width: 500px; margin: 0 auto; background: white; padding: 25px; border-radius: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); box-sizing: border-box; transition: max-width 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); }
+      body.tab-stats-active .app-container { max-width: 1024px; }
+      
+      h2 { text-align: center; color: #ff9800; margin-top: 0; margin-bottom: 20px; font-size: 22px; }
+      .form-centered { max-width: 450px; margin: 0 auto; }
+
+      .tab-nav { display: flex; background: #f0f0f0; border-radius: 10px; padding: 4px; margin-bottom: 20px; max-width: 450px; margin-left: auto; margin-right: auto; gap: 4px; overflow-x: auto; }
+      .tab-btn { flex: 1; min-width: 50px; text-align: center; padding: 10px 4px; border: none; background: transparent; color: #666; font-size: 13px; font-weight: bold; border-radius: 8px; cursor: pointer; transition: 0.3s; white-space: nowrap; }
+      .tab-btn.active { background: #ff9800; color: white; box-shadow: 0 4px 10px rgba(255, 152, 0, 0.35); transform: translateY(-2px); }
+      .tab-btn.ai-btn.active { background: #673ab7; box-shadow: 0 4px 10px rgba(103, 58, 183, 0.35); }
+      
+      .refresh-btn { flex: 0.6; min-width: 35px; text-align: center; padding: 10px 4px; border: none; background: #e1f5fe; color: #0288d1; font-size: 13px; font-weight: bold; border-radius: 8px; cursor: pointer; transition: 0.3s; }
+      .refresh-btn:active { transform: translateY(2px); }
+
+      #cat-switch-container { display: flex; gap: 10px; margin-bottom: 15px; overflow-x: auto; padding-bottom: 5px; }
+      .cat-btn { flex: 1; min-width: 80px; padding: 10px; border: 2px solid #ddd; background: white; border-radius: 8px; font-weight: bold; color: #777; cursor: pointer; transition: 0.2s; white-space: nowrap; }
+      .cat-btn.active { border-color: #ff9800; background: #fff3e0; color: #ff9800; }
+
+      .global-summary-wrapper { display: flex; flex-direction: column; width: 100%; max-width: 450px; margin: 0 auto 20px auto; gap: 10px; transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); }
+      .summary-cards { display: flex; gap: 10px; width: 100%; } 
+      .card-item { flex: 1; padding: 12px; border-radius: 12px; text-align: center; }
+      .card-cal { background: #fff8e1; border: 1px solid #ffe082; color: #f57c00; }
+      .card-water { background: #e1f5fe; border: 1px solid #81d4fa; color: #0288d1; }
+      .card-title { font-size: 13px; font-weight: bold; margin-bottom: 5px; opacity: 0.9; }
+      .card-value { font-size: 22px; font-weight: bold; }
+      .card-value span { font-size: 12px; font-weight: normal; margin-left: 2px; }
+
+      .tab-content { display: none; animation: fadeIn 0.3s ease-in-out; }
+      .tab-content.active { display: block; }
+      @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+      .form-group { margin-bottom: 12px; }
+      label { display: block; font-weight: bold; margin-bottom: 6px; font-size: 14px; color: #444; }
+      input, select, textarea { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; font-size: 15px; background-color: #fafafa; font-family: inherit; }
+      optgroup { font-weight: bold; color: #0288d1; font-style: normal; }
+
+      .row { display: flex; gap: 12px; }
+      .row .form-group { flex: 1; min-width: 0; }
+      
+      .food-block { background: #fdfdfd; border: 1px solid #eee; border-radius: 10px; padding: 15px; margin-bottom: 15px; border-left: 4px solid #ff9800; }
+      .detail-inputs { display: none; margin-top: 10px; padding-top: 10px; border-top: 1px dashed #ddd; }
+      button.submit { width: 100%; padding: 14px; background: #ff9800; color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: bold; cursor: pointer; margin-top: 10px; transition: 0.2s; }
+      button.submit:disabled { background: #ccc; }
+      #status { text-align: center; margin-top: 15px; font-weight: bold; font-size: 14px; }
+
+      .quick-records { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+      .quick-btn { padding: 6px 12px; background: #e8f5e9; border: 1px solid #c8e6c9; color: #2e7d32; border-radius: 20px; font-size: 13px; cursor: pointer; transition: 0.2s; }
+
+      .schedule-item { display: flex; justify-content: space-between; align-items: center; background: #fff; border: 1px solid #eee; padding: 15px; border-radius: 10px; margin-bottom: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.02); }
+      .schedule-item { border-left: 4px solid #9c27b0; }
+      .sched-info { flex: 1; }
+      .sched-time { font-size: 16px; font-weight: bold; color: #444; margin-bottom: 4px; }
+      .sched-detail { font-size: 13px; color: #777; line-height: 1.4; }
+
+      .date-filter-container { display: flex; align-items: center; justify-content: center; gap: 10px; margin-bottom: 25px; background: #fdfdfd; padding: 15px; border-radius: 12px; border: 1px solid #eee; flex-wrap: wrap; }
+      .date-filter-container input[type="date"] { width: auto; padding: 8px; font-size: 14px; flex: 1; min-width: 120px; }
+      .filter-btn { padding: 10px 20px; background: #0288d1; color: white; border: none; border-radius: 8px; font-weight: bold; cursor: pointer; transition: 0.2s; white-space: nowrap; }
+
+      .charts-grid { display: flex; flex-direction: column; gap: 20px; }
+      .chart-wrapper { display: none; width: 100%; border: 1px solid #eee; border-radius: 12px; padding: 15px; box-sizing: border-box; background: #fff; }
+      .chart-wrapper.active-chart { display: block; }
+      .chart-title { text-align: center; font-weight: bold; margin-bottom: 10px; color: #555; font-size: 16px; }
+
+      .ai-chat-box { background: #f3e5f5; border-left: 4px solid #673ab7; padding: 15px; border-radius: 10px; margin-top: 15px; line-height: 1.6; font-size: 15px; color: #333; display: none; }
+      .ai-chat-box strong { color: #512da8; }
+
+      @media (min-width: 768px) {
+        .charts-grid { flex-direction: row; flex-wrap: wrap; }
+        .chart-wrapper { display: block !important; width: calc(50% - 10px); }
+        body.tab-stats-active #global-cat-switch { display: none !important; }
+        body.tab-stats-active .global-summary-wrapper { flex-direction: row; max-width: 100%; gap: 20px; margin-bottom: 25px; }
+        body.tab-stats-active .summary-cards { flex: 1; gap: 15px; }
+      }
+
+      .unrated-item { background: #fff8e1; padding: 12px; border-radius: 10px; margin-bottom: 10px; border-left: 4px solid #ffb300; font-size: 14px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); animation: fadeIn 0.3s; }
+      .unrated-info { font-weight: bold; color: #555; margin-bottom: 8px; }
+      .rating-group { display: flex; justify-content: space-between; gap: 5px; }
+      .rating-btn { flex: 1; font-size: 22px; background: white; border: 1px solid #ddd; border-radius: 8px; padding: 5px 0; cursor: pointer; transition: 0.2s; }
+      .rating-btn:hover { background: #f5f5f5; transform: translateY(-2px); border-color: #ffb300; }
+
+      .info-tooltip { position: relative; display: inline-block; cursor: pointer; margin-left: 8px; color: #ffb300; font-size: 15px; }
+      .info-tooltip .tooltip-text { visibility: hidden; width: 220px; background-color: #555; color: #fff; text-align: left; border-radius: 8px; padding: 12px; position: absolute; z-index: 100; top: 130%; left: 50%; margin-left: -110px; opacity: 0; transition: opacity 0.3s; font-size: 13px; line-height: 1.6; font-weight: normal; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+      .info-tooltip .tooltip-text::after { content: ""; position: absolute; bottom: 100%; left: 50%; margin-left: -6px; border-width: 6px; border-style: solid; border-color: transparent transparent #555 transparent; }
+      .info-tooltip:hover .tooltip-text, .info-tooltip:active .tooltip-text { visibility: visible; opacity: 1; }
+
+      /* ================= ✨ 管理頁面專屬樣式 ================= */
+      .manage-item { background: #fff; border: 1px solid #eee; padding: 15px; border-radius: 10px; margin-bottom: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.02); border-left: 4px solid #607d8b; transition: 0.3s; }
+      .manage-info { flex: 1; }
+      .manage-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+      .manage-time { font-size: 15px; font-weight: bold; color: #444; }
+      .manage-food { font-size: 14px; color: #0288d1; font-weight: bold; margin-bottom: 5px; }
+      .manage-detail { font-size: 13px; color: #666; line-height: 1.4; }
+      .manage-actions { display: flex; gap: 8px; margin-top: 10px; justify-content: flex-end; }
+      
+      .action-btn { padding: 6px 12px; border: none; border-radius: 6px; font-size: 13px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+      .btn-edit { background: #e3f2fd; color: #1976d2; }
+      .btn-edit:active { background: #bbdefb; }
+      .btn-delete { background: #ffebee; color: #d32f2f; margin-left: 10px; }
+      .btn-delete:active { background: #ffcdd2; }
+      
+      .btn-save { background: #e8f5e9; color: #2e7d32; width: 100%; margin-top: 10px; padding: 10px;}
+      .btn-cancel { background: #f5f5f5; color: #757575; width: 100%; margin-top: 5px; padding: 10px;}
+
+      .edit-mode-container { display: none; margin-top: 10px; padding-top: 10px; border-top: 1px dashed #ddd; animation: fadeIn 0.3s; }
+      .edit-row { display: flex; gap: 10px; margin-bottom: 8px; }
+      .edit-row input { flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; background: #fafafa; }
+    </style>
+  </head>
+  <body class="tab-input-active">
+    <div class="app-container">
+      <h2>🐾 喵星人健康管家</h2>
+      
+      <div class="tab-nav">
+        <button class="tab-btn active" id="nav-input" onclick="switchTab('input', this)">📝 紀錄</button>
+        <button class="tab-btn" id="nav-stats" onclick="switchTab('stats', this)">📊 圖表</button>
+        <button class="tab-btn" id="nav-schedule" onclick="switchTab('schedule', this)">⏰ 排程</button>
+        <button class="tab-btn ai-btn" id="nav-ai" onclick="switchTab('ai', this)">🤖 分析</button>
+        <button class="tab-btn" id="nav-manage" onclick="switchTab('manage', this)">⚙️ 管理</button>
+        <button class="refresh-btn" id="refresh-btn" onclick="refreshData()">🔄</button>
+      </div>
+
+      <div id="loading" style="text-align: center; color: #888; margin-bottom: 15px;">系統載入中...請稍候</div>
+      <div id="global-summary-container" class="global-summary-wrapper"></div>
+      <div class="form-centered" id="global-cat-switch"><div id="cat-switch-container"></div></div>
+
+      <div id="tab-input" class="tab-content active form-centered">
+        <div id="unrated-container" style="display:none; margin-bottom: 25px;">
+          <h3 style="margin-top:0; color: #f57c00; font-size: 16px; border-bottom: 2px dashed #ffe0b2; padding-bottom: 8px; display: flex; align-items: center;">
+            ⭐ 待收碗 / 補登食慾
+            <div class="info-tooltip">
+              ℹ️
+              <span class="tooltip-text">
+                <strong>🤩 5分：</strong>狼吞虎嚥 (秒殺)<br>
+                <strong>😋 4分：</strong>順利吃光 (正常)<br>
+                <strong>🙂 3分：</strong>勉強吃完 (吃很久)<br>
+                <strong>😕 2分：</strong>剩下一半 (愛吃不吃)<br>
+                <strong>🤢 1分：</strong>完全拒吃 (一口沒動)
+              </span>
+            </div>
+          </h3>
+          <div id="unrated-list"></div>
+        </div>
+        <div class="row">
+          <div class="form-group"><label>📅 日期</label><input type="date" id="date"></div>
+          <div class="form-group"><label>⏰ 時間</label><input type="time" id="time"></div>
+        </div>
+        <div id="food-container"></div>
+        <button class="submit" id="submitBtn" onclick="submitForm()" disabled>送出紀錄</button>
+        <div id="status"></div>
+      </div>
+
+      <div id="tab-stats" class="tab-content">
+        <div class="date-filter-container">
+          <label style="margin-bottom:0;">📅 查詢區間：</label>
+          <input type="date" id="chart-start-date">
+          <span style="font-weight:bold; color:#777;">至</span>
+          <input type="date" id="chart-end-date">
+          <button class="filter-btn" onclick="applyDateFilter()">套用篩選</button>
+        </div>
+        
+        <div id="charts-grid" class="charts-grid"></div>
+        
+        <div class="chart-wrapper" style="display: block; margin-top: 30px; border-top: 3px solid #eee; padding-top: 25px; width: 100%;">
+          <div class="chart-title" style="color: #00bcd4; font-size: 18px;">💧 每日共用水碗消耗量</div>
+          <div style="position: relative; height: 200px; width: 100%;"><canvas id="shared-water-chart"></canvas></div>
+        </div>
+
+        <div style="background: #e8f5e9; padding: 20px; border-radius: 12px; margin-top: 30px; border: 1px solid #c8e6c9; text-align: center;">
+          <h3 style="margin-top: 0; color: #2e7d32;">📄 匯出 PDF 醫療報告</h3>
+          <p style="font-size: 13px; color: #555; margin-bottom: 15px;">將目前畫面上的圖表與數據打包成 PDF，寄給獸醫或家人。</p>
+          
+          <div style="display: flex; gap: 12px; max-width: 380px; margin: 0 auto; flex-direction: column; text-align: left;">
+            <select id="export-cat-select" style="text-align: center; font-weight: bold; color: #2e7d32; background: #c8e6c9; border: 1px solid #a5d6a7; padding: 10px; border-radius: 8px;"></select>
+            
+            <div>
+              <label style="font-size: 13px; color: #555; font-weight: bold;">📝 自訂信件主旨 (選填)</label>
+              <input type="text" id="export-title" placeholder="預設：🐾 【貓咪名字】健康分析報告 (日期)">
+            </div>
+
+            <div>
+              <label style="font-size: 13px; color: #555; font-weight: bold;">📧 收件者 (多個信箱請用逗號 , 隔開)</label>
+              <input type="text" id="export-email" placeholder="doctor@gmail.com, mom@gmail.com">
+            </div>
+
+            <label style="font-size: 15px; color: #333; display: flex; align-items: center; gap: 8px; margin-top: 5px; cursor: pointer; background: #f3e5f5; padding: 10px; border-radius: 8px; border: 1px solid #e1bee7;">
+              <input type="checkbox" id="export-ai-check" style="width: 20px; height: 20px;">
+              <strong>✨ 在報告中加入 AI 綜合健康分析</strong>
+            </label>
+
+            <button class="submit" style="background: #4caf50; margin-top: 10px;" onclick="exportReportToPDF()" id="export-btn">📥 產生並寄出報告</button>
+          </div>
+          <div id="export-status" style="margin-top: 15px; font-weight: bold; font-size: 14px;"></div>
+        </div>
+      </div>
+
+      <div id="tab-schedule" class="tab-content form-centered">
+        <div class="food-block" style="border-left-color: #9c27b0;">
+          <h3 style="margin-top:0; color: #9c27b0;">➕ 新增定時任務</h3>
+          <div class="row">
+            <div class="form-group"><label>執行時間</label><input type="time" id="sched-time" value="16:00"></div>
+            <div class="form-group"><label>對象貓咪</label><select id="sched-cat"></select></div>
+          </div>
+          <div class="form-group"><label>食物名稱</label><select id="sched-foodName"></select></div>
+          <div class="row">
+            <div class="form-group"><label>數量 (g)</label><input type="number" id="sched-amount" value="8" min="1"></div>
+            <div class="form-group"><label>加水 (cc) (選填)</label><input type="number" id="sched-water" value="0" min="0"></div>
+          </div>
+          <button class="submit" style="background: #9c27b0;" onclick="addSchedule()" id="addSchedBtn">加入排程清單</button>
+        </div>
+        <h3 style="margin-top:25px; color: #444; border-bottom: 2px solid #eee; padding-bottom: 8px;">📋 執行中排程清單</h3>
+        <div id="schedule-list"><div style="text-align: center; color: #999; margin-top: 15px;">載入中...</div></div>
+      </div>
+
+      <div id="tab-ai" class="tab-content form-centered">
+        <div class="food-block" style="border-left-color: #673ab7;">
+          <h3 style="margin-top:0; color: #673ab7; margin-bottom: 12px;">🩺 呼叫專屬獸醫助理</h3>
+          <p style="font-size: 13px; color: #666; margin-top: 0;">AI 會自動調閱你選擇區間內的所有病歷進行分析。</p>
+          <div class="row">
+            <div class="form-group"><label>起始日期</label><input type="date" id="ai-start-date"></div>
+            <div class="form-group"><label>結束日期</label><input type="date" id="ai-end-date"></div>
+          </div>
+          <div class="form-group">
+            <label>你想要問什麼？</label>
+            <textarea id="ai-question" rows="3" placeholder="例如：這幾天有發生非預期的事情嗎？水量夠嗎？"></textarea>
+          </div>
+          <button class="submit" style="background: #673ab7;" onclick="askAIAssistant()" id="ai-submit-btn">🧠 請 AI 分析</button>
+        </div>
+        <div id="ai-response-box" class="ai-chat-box"></div>
+      </div>
+
+      <div id="tab-manage" class="tab-content form-centered">
+        <h3 style="margin-top:0; color: #607d8b; border-bottom: 2px solid #eee; padding-bottom: 8px;">⚙️ 最近 10 筆紀錄管理</h3>
+        <p style="font-size: 13px; color: #888; margin-bottom: 15px;">💡 你可以在這裡瀏覽歷史紀錄，隨時修改份量與備註，或是刪除不要的資料。</p>
+        <div id="manage-list"><div style="text-align: center; color: #999; margin-top: 15px;">載入中...</div></div>
+      </div>
+
+    </div>
+
+    <script>
+      const urlParams = new URLSearchParams(window.location.search);
+      const IS_READONLY = (urlParams.get('view') === 'readonly');
+
+      let currentCat = ""; 
+      const categories = ["濕食", "乾飼料", "副食罐", "營養液"];
+      let chartInstances = {}; let scatterInstances = {}; let weightInstances = {}; let poopInstances = {}; let sharedWaterChartInstance = null; let appetiteInstances = {}; 
+      let isDataLoaded = {}; let recentRecordsCache = {}; let deleteRecordsCache = {}; let schedulesCache = []; let globalFoods = {};
+      
+      window.catMilestones = window.catMilestones || {};
+
+      window.onload = function() {
+        const now = new Date();
+        const todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+        document.getElementById('date').value = todayStr;
+        document.getElementById('time').value = String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0');
+        
+        let thirtyDaysAgo = new Date(); thirtyDaysAgo.setDate(now.getDate() - 29);
+        const startStr = thirtyDaysAgo.getFullYear() + '-' + String(thirtyDaysAgo.getMonth() + 1).padStart(2, '0') + '-' + String(thirtyDaysAgo.getDate()).padStart(2, '0');
+        
+        document.getElementById('chart-end-date').value = todayStr; document.getElementById('chart-start-date').value = startStr;
+        
+        let sevenDaysAgo = new Date(); sevenDaysAgo.setDate(now.getDate() - 6);
+        document.getElementById('ai-start-date').value = sevenDaysAgo.getFullYear() + '-' + String(sevenDaysAgo.getMonth() + 1).padStart(2, '0') + '-' + String(sevenDaysAgo.getDate()).padStart(2, '0');
+        document.getElementById('ai-end-date').value = todayStr;
+
+        if (IS_READONLY) {
+          document.getElementById('nav-input').style.display = 'none';    
+          document.getElementById('nav-schedule').style.display = 'none'; 
+          document.getElementById('nav-manage').style.display = 'none'; 
+          switchTab('stats', document.getElementById('nav-stats'));
+        }
+
+        google.script.run.withSuccessHandler(buildUI).getInitData();
+
+        // ✨ 終極解法：使用原生的 ResizeObserver 隨時監控容器大小
+        const container = document.querySelector('.app-container');
+        if (container) {
+          const resizeObserver = new ResizeObserver(() => {
+            // 只要外層框框在變動，且目前畫面停留在圖表頁籤，就強制所有圖表重新對齊
+            if (document.body.classList.contains('tab-stats-active')) {
+              const forceRedraw = (chart) => { if (chart) { chart.resize(); chart.update('none'); } };
+              forceRedraw(sharedWaterChartInstance);
+              Object.values(chartInstances).forEach(forceRedraw);
+              Object.values(scatterInstances).forEach(forceRedraw);
+              Object.values(weightInstances).forEach(forceRedraw);
+              Object.values(poopInstances).forEach(forceRedraw);
+              Object.values(appetiteInstances).forEach(forceRedraw);
+            }
+          });
+          // 綁定監聽器，讓它持續死盯著這個框框
+          resizeObserver.observe(container);
+        }
+      };
+
+      function switchTab(tabId, element) {
+        document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+        document.getElementById('tab-' + tabId).classList.add('active');
+        if(element) element.classList.add('active');
+        document.body.className = `tab-${tabId}-active`;
+        
+        document.getElementById('global-cat-switch').style.display = (tabId === 'schedule') ? 'none' : 'block';
+
+        if (tabId === 'stats') {
+          loadSharedWaterChart();
+          
+          // 這裡把之前猜測時間的 setTimeout 完全拿掉，交給等下的 ResizeObserver 自動處理
+          
+          if (window.innerWidth >= 768) {
+            Object.keys(isDataLoaded).forEach(cat => { 
+              if (!isDataLoaded[cat]) { 
+                loadChartData(cat); 
+                if(!IS_READONLY) loadRecentRecords(cat); 
+                isDataLoaded[cat] = true; 
+              } 
+            });
+          }
+        }
+      }
+
+      function buildUI(data) {
+        document.getElementById('loading').style.display = "none";
+        document.getElementById('submitBtn').disabled = false;
+        globalFoods = data.foods;
+        
+        const catContainer = document.getElementById('cat-switch-container');
+        const summaryContainer = document.getElementById('global-summary-container');
+        const chartsGrid = document.getElementById('charts-grid');
+        const schedCatSelect = document.getElementById('sched-cat'); 
+        const exportCatSelect = document.getElementById('export-cat-select');
+        
+        catContainer.innerHTML = ""; summaryContainer.innerHTML = ""; chartsGrid.innerHTML = ""; schedCatSelect.innerHTML = ""; exportCatSelect.innerHTML = "";
+        if (data.cats.length === 0) return;
+
+        data.cats.forEach((cat, index) => {
+          isDataLoaded[cat] = false; 
+          const activeClass = index === 0 ? "active" : "";
+          catContainer.innerHTML += `<button class="cat-btn ${activeClass}" id="btn-${cat}" onclick="selectCat('${cat}')">${cat}</button>`;
+          schedCatSelect.innerHTML += `<option value="${cat}">${cat}</option>`; 
+          exportCatSelect.innerHTML += `<option value="${cat}">產出【${cat}】的專屬報告</option>`; 
+          
+          summaryContainer.innerHTML += `
+            <div class="summary-cards" id="summary-${cat}">
+              <div class="card-item card-cal"><div class="card-title">🔥 ${cat} 熱量</div><div class="card-value" id="today-cal-val-${cat}">-- <span>kcal</span></div></div>
+              <div class="card-item card-water"><div class="card-title">💧 ${cat} 水量</div><div class="card-value" id="today-water-val-${cat}">-- <span>ml</span></div></div>
+            </div>`;
+          
+          loadTodaySummary(cat);
+          
+          chartsGrid.innerHTML += `
+            <div class="chart-wrapper ${activeClass ? 'active-chart' : ''}" id="chart-wrapper-${cat}">
+              <div class="chart-title">🐱 ${cat} 的健康趨勢</div><div style="position: relative; height: 220px; width: 100%; margin-bottom: 25px;"><canvas id="canvas-${cat}"></canvas></div>
+              <div class="chart-title" style="margin-top: 20px;">🕒 ${cat} 的進食時間分佈</div><div style="position: relative; height: 250px; width: 100%; margin-bottom: 25px;"><canvas id="scatter-${cat}"></canvas></div>
+              <div class="chart-title" style="margin-top: 20px;">⚖️ ${cat} 的體重變化 (kg)</div><div style="position: relative; height: 220px; width: 100%; margin-bottom: 25px;"><canvas id="weight-${cat}"></canvas></div>
+              <div class="chart-title" style="margin-top: 20px;">🏥 排泄與異常狀態追蹤</div><div style="position: relative; height: 200px; width: 100%;"><canvas id="poop-${cat}"></canvas></div>
+              <div class="chart-title" style="margin-top: 20px;">💖 ${cat} 每日平均食慾 (1~5分)</div><div style="position: relative; height: 200px; width: 100%;"><canvas id="appetite-${cat}"></canvas></div>
+            </div>`;
+        });
+
+        if (!IS_READONLY) {
+          const foodContainer = document.getElementById('food-container');
+          foodContainer.innerHTML = "";
+          categories.forEach((cat, index) => {
+            let optionHTML = `<option value="">-- 不餵此項 --</option>`;
+            if (data.foods[cat]) {
+              data.foods[cat].forEach(food => { optionHTML += `<option value="${food}">${food}</option>`; });
+            }
+
+            let borderColor = "#ff9800"; 
+            if (cat === "濕食") borderColor = "#2196f3";   
+            if (cat === "副食罐") borderColor = "#9c27b0"; 
+            if (cat === "營養液") borderColor = "#00e5ff"; 
+
+            foodContainer.innerHTML += `
+              <div class="food-block" style="border-left: 4px solid ${borderColor};">
+                <div class="form-group">
+                  <label>${cat} 選擇</label>
+                  <select id="food-select-${index}" onchange="toggleDetails(${index})">
+                    ${optionHTML}
+                  </select>
+                  <div class="quick-records" id="quick-records-${index}"></div>
+                </div>
+                
+                <div class="detail-inputs" id="details-${index}">
+                  <div class="row">
+                    <div class="form-group"><label>數量 (g/ml)</label><input type="number" id="amount-${index}" value="0" min="0"></div>
+                    <div class="form-group"><label>加水 (cc)</label><input type="number" id="water-${index}" value="0" min="0"></div>
+                  </div>
+                  <div class="form-group"><label>備註</label><input type="text" id="notes-${index}" placeholder="備註..."></div>
+                </div>
+              </div>`;
+          });
+
+          foodContainer.innerHTML += `
+            <div class="food-block" style="border-left-color: #8d6e63;">
+              <h3 style="margin-top:0; color: #8d6e63; margin-bottom: 12px; font-size: 15px;">🏥 排泄與異常狀況</h3>
+              <div class="row">
+                <div class="form-group">
+                  <select id="litter-type" onchange="document.getElementById('litter-details').style.display = this.value ? 'block' : 'none';">
+                    <option value="">-- 不紀錄 --</option>
+                    <option value="正常大便">💩 正常大便</option>
+                    <option value="拉肚子">💦 拉肚子</option>
+                    <option value="尿尿">💧 正常尿尿</option>
+                    <option value="亂尿尿">💢 亂尿尿</option>
+                    <option value="嘔吐">🤮 嘔吐</option>
+                  </select>
+                </div>
+              </div>
+              <div class="detail-inputs" id="litter-details" style="display: none; padding-top: 5px; margin-top: 5px;">
+                <div class="form-group"><label>手寫備註 (可選)</label><input type="text" id="litter-notes" placeholder="發現位置、吐毛球、顏色..."></div>
+              </div>
+            </div>
+
+            <div class="food-block" style="border-left-color: #f44336; background-color: #fff8f8;">
+              <h3 style="margin-top:0; color: #f44336; margin-bottom: 5px; font-size: 15px;">📌 今日重大事件 / 醫療備註</h3>
+              <p style="font-size: 12px; color: #666; margin-top: 0; margin-bottom: 10px;">紀錄會在圖表上畫出一條紅線，方便對照食慾與體重變化。</p>
+              <div class="form-group">
+                <textarea id="milestone-text" placeholder="例如：開始服用新藥、食醋、回診建議..." style="height: 60px;"></textarea>
+              </div>
+              <button class="submit" style="background: #f44336; margin-top: 10px; padding: 10px;" onclick="submitMilestone()" id="milestone-btn">記錄醫療里程碑</button>
+              <div id="milestone-status" style="text-align: center; margin-top: 10px; font-weight: bold; font-size: 14px;"></div>
+            </div>
+          `;
+
+          loadSchedules(); 
+          const schedFoodSelect = document.getElementById('sched-foodName');
+          schedFoodSelect.innerHTML = "";
+          let hasAnyFood = false;
+          categories.forEach(cat => {
+            if (globalFoods[cat] && globalFoods[cat].length > 0) {
+              hasAnyFood = true;
+              let optgroup = `<optgroup label="【${cat}】">`;
+              globalFoods[cat].forEach(food => { optgroup += `<option value="${food}" data-category="${cat}">${food}</option>`; });
+              optgroup += `</optgroup>`;
+              schedFoodSelect.innerHTML += optgroup;
+            }
+          });
+          if (!hasAnyFood) { schedFoodSelect.innerHTML = `<option value="">請先至試算表新增食物</option>`; }
+        }
+
+        if (data.cats.length > 0) selectCat(data.cats[0]);
+        loadSharedWaterChart();
+      }
+
+      function selectCat(catName) {
+        currentCat = catName;
+        loadUnratedRecords(currentCat);
+        document.getElementById('export-cat-select').value = catName; 
+        document.querySelectorAll('.cat-btn').forEach(btn => btn.classList.remove('active'));
+        document.getElementById(`btn-${catName}`).classList.add('active');
+        document.querySelectorAll('.chart-wrapper').forEach(el => el.classList.remove('active-chart'));
+        document.getElementById(`chart-wrapper-${catName}`).classList.add('active-chart');
+        
+        if (!isDataLoaded[catName]) { loadChartData(catName); if(!IS_READONLY) loadRecentRecords(catName); isDataLoaded[catName] = true; } 
+        else if(!IS_READONLY) { renderQuickButtons(catName); }
+        
+        if(!IS_READONLY) loadManageRecords(catName);
+        document.getElementById('ai-response-box').style.display = 'none';
+        document.getElementById('ai-response-box').innerHTML = '';
+      }
+
+      function applyDateFilter() {
+        let start = document.getElementById('chart-start-date').value; let end = document.getElementById('chart-end-date').value;
+        if (!start || !end || start > end) { alert("請選擇有效的日期區間！"); return; }
+        refreshData();
+      }
+
+      function refreshData() {
+        const btn = document.getElementById('refresh-btn'); btn.innerText = "⏳..."; btn.disabled = true;
+        Object.keys(isDataLoaded).forEach(cat => { loadTodaySummary(cat); if (isDataLoaded[cat]) { loadChartData(cat); if(!IS_READONLY) { loadRecentRecords(cat); loadManageRecords(cat); } } });
+        loadSharedWaterChart(); setTimeout(() => { btn.innerText = "🔄"; btn.disabled = false; }, 2000);
+      }
+
+      // ================= ✨ 歷史紀錄管理邏輯 (取代舊刪除功能) =================
+      function loadManageRecords(catName) { 
+        google.script.run.withSuccessHandler(function(records) { 
+          deleteRecordsCache[catName] = records; 
+          if (currentCat === catName) renderManageRecords(catName); 
+        }).getRecentRecordsForDeletion(catName); 
+      }
+
+      function renderManageRecords(catName) {
+        const container = document.getElementById('manage-list'); 
+        const records = deleteRecordsCache[catName]; 
+        container.innerHTML = '';
+        
+        if (!records || records.length === 0) { 
+          container.innerHTML = '<div style="text-align: center; color: #999; margin-top: 15px;">目前沒有任何紀錄。</div>'; 
+          return; 
+        }
+        
+        records.forEach((rec, index) => {
+          let detailText = `${rec.amount}g`; 
+          if (rec.water > 0) detailText += ` + ${rec.water}ml水`; 
+          if (rec.notes) detailText += `<br>📝 備註：${rec.notes}`;
+
+          container.innerHTML += `
+            <div class="manage-item" id="manage-card-${index}">
+              <div id="view-mode-${index}">
+                <div class="manage-header">
+                  <div class="manage-time">🕒 ${rec.date} ${rec.time}</div>
+                </div>
+                <div class="manage-food">🥣 ${rec.foodName}</div>
+                <div class="manage-detail">${detailText}</div>
+                <div class="manage-actions">
+                  <button class="action-btn btn-edit" onclick="toggleEditMode(${index}, true)">✏️ 編輯</button>
+                  <button class="action-btn btn-delete" onclick="deleteHistoryRecord(${rec.rowIndex}, this)">🗑️ 刪除</button>
+                </div>
+              </div>
+
+              <div class="edit-mode-container" id="edit-mode-${index}">
+                <div class="manage-food" style="margin-bottom: 10px;">修改：${rec.foodName}</div>
+                <div class="edit-row">
+                  <input type="number" id="edit-amount-${index}" value="${rec.amount}" placeholder="重量(g)">
+                  <input type="number" id="edit-water-${index}" value="${rec.water}" placeholder="水量(ml)">
+                </div>
+                <div class="edit-row">
+                  <input type="text" id="edit-notes-${index}" value="${rec.notes || ''}" placeholder="備註...">
+                </div>
+                <button class="action-btn btn-save" onclick="saveEditedRecord(${index}, ${rec.rowIndex}, this)">💾 儲存修改</button>
+                <button class="action-btn btn-cancel" onclick="toggleEditMode(${index}, false)">❌ 取消</button>
+              </div>
+            </div>
+          `;
+        });
+      }
+
+      function toggleEditMode(index, isEditing) {
+        document.getElementById(`view-mode-${index}`).style.display = isEditing ? 'none' : 'block';
+        document.getElementById(`edit-mode-${index}`).style.display = isEditing ? 'block' : 'none';
+      }
+
+      function saveEditedRecord(index, rowIndex, btnElement) {
+        const newAmount = document.getElementById(`edit-amount-${index}`).value;
+        const newWater = document.getElementById(`edit-water-${index}`).value;
+        const newNotes = document.getElementById(`edit-notes-${index}`).value;
+
+        btnElement.innerText = "儲存中..."; 
+        btnElement.disabled = true;
+
+        google.script.run.withSuccessHandler(function(res) {
+          if(res.success) {
+            alert("✅ 紀錄已成功更新！");
+            refreshData(); 
+          } else {
+            alert("❌ 更新失敗：" + res.message);
+            btnElement.innerText = "💾 儲存修改"; 
+            btnElement.disabled = false;
+          }
+        }).updateRecordData(currentCat, rowIndex, newAmount, newWater, newNotes);
+      }
+
+      function deleteHistoryRecord(rowIndex, btnElement) {
+        if(!confirm("確定要刪除這筆紀錄嗎？\n資料刪除後會自動往前遞補，無法恢復喔！")) return;
+        btnElement.innerText = "刪除中..."; btnElement.disabled = true;
+        google.script.run.withSuccessHandler(function(res) { 
+          if(res.success) { alert(res.message); refreshData(); } 
+          else { alert("刪除失敗：" + res.message); btnElement.innerText = "🗑️ 刪除"; btnElement.disabled = false; } 
+        }).deleteRecord(currentCat, rowIndex);
+      }
+
+      function loadSchedules() { google.script.run.withSuccessHandler(function(data) { schedulesCache = data; renderSchedules(); }).getSchedules(); }
+
+      function renderSchedules() {
+        const listContainer = document.getElementById('schedule-list'); listContainer.innerHTML = '';
+        if (schedulesCache.length === 0) { listContainer.innerHTML = '<div style="text-align: center; color: #999; margin-top: 15px;">目前沒有設定任何排程。</div>'; return; }
+        schedulesCache.forEach(sched => {
+          let detailText = `🐱 ${sched.catName} ｜ 🥣 ${sched.foodName} (${sched.amount}g`;
+          if (sched.water && sched.water > 0) detailText += ` + ${sched.water}ml水`; detailText += `)`;
+          listContainer.innerHTML += `<div class="schedule-item"><div class="sched-info"><div class="sched-time">🕒 每天 ${sched.time}</div><div class="sched-detail">${detailText}</div></div><button class="action-btn btn-delete" onclick="deleteSchedule('${sched.id}')">刪除</button></div>`;
+        });
+      }
+
+      function addSchedule() {
+        const btn = document.getElementById('addSchedBtn'); const foodSelect = document.getElementById('sched-foodName');
+        const selectedOption = foodSelect.options[foodSelect.selectedIndex];
+        if (!selectedOption || selectedOption.value === "") { alert("請先確認有食物名稱可以選擇喔！"); return; }
+        const newSched = { time: document.getElementById('sched-time').value, catName: document.getElementById('sched-cat').value, category: selectedOption.getAttribute('data-category'), amount: document.getElementById('sched-amount').value, water: document.getElementById('sched-water').value, foodName: foodSelect.value };
+        if(!newSched.time || !newSched.amount) { alert("時間和數量不能為空喔！"); return; }
+        btn.disabled = true; btn.innerText = "儲存中...";
+        google.script.run.withSuccessHandler(function(updatedSchedules) { schedulesCache = updatedSchedules; renderSchedules(); btn.disabled = false; btn.innerText = "加入排程清單"; document.getElementById('sched-amount').value = "8"; document.getElementById('sched-water').value = "0"; }).addSchedule(newSched);
+      }
+
+      function deleteSchedule(id) {
+        if(!confirm("確定要刪除這個定時排程嗎？")) return;
+        document.getElementById('schedule-list').innerHTML = '<div style="text-align: center; color: #999; margin-top: 15px;">刪除中...</div>';
+        google.script.run.withSuccessHandler(function(updatedSchedules) { schedulesCache = updatedSchedules; renderSchedules(); }).deleteSchedule(id);
+      }
+
+      function toggleDetails(index) {
+        const selectBox = document.getElementById(`food-select-${index}`); const detailsBox = document.getElementById(`details-${index}`);
+        if (selectBox.value !== "") { detailsBox.style.display = "block"; } else { detailsBox.style.display = "none"; document.getElementById(`amount-${index}`).value = "0"; document.getElementById(`water-${index}`).value = "0"; document.getElementById(`notes-${index}`).value = ""; }
+      }
+
+      function loadRecentRecords(catName) { google.script.run.withSuccessHandler(function(data) { if (data.error) return; recentRecordsCache[catName] = data; if (currentCat === catName) renderQuickButtons(catName); }).getRecentRecords(catName); }
+
+      function renderQuickButtons(catName) {
+        const data = recentRecordsCache[catName]; if (!data) return;
+        categories.forEach((category, index) => {
+          const container = document.getElementById(`quick-records-${index}`); container.innerHTML = ''; 
+          if (data[category] && data[category].length > 0) {
+            data[category].forEach((record, recordIndex) => {
+              let btnText = `${record.foodName} (${record.amount}g`;
+              if (record.water > 0) btnText += ` + ${record.water}ml水`;
+              if (record.notes) { let shortNotes = record.notes.length > 5 ? record.notes.substring(0, 5) + '..' : record.notes; btnText += ` / ${shortNotes}`; } btnText += `)`;
+              container.innerHTML += `<button type="button" class="quick-btn" onclick="applyQuickRecord(${index}, '${category}', ${recordIndex})">✨ ${btnText}</button>`;
+            });
+          }
+        });
+      }
+
+      function applyQuickRecord(catIndex, categoryName, recordIndex) {
+        const record = recentRecordsCache[currentCat][categoryName][recordIndex]; 
+        if (!record) return;
+        
+        let selectBox = document.getElementById(`food-select-${catIndex}`);
+        let targetFood = String(record.foodName).trim(); 
+        
+        let optionExists = Array.from(selectBox.options).some(opt => opt.value === targetFood);
+        if (!optionExists) {
+            let newOption = new Option(targetFood + " (歷史紀錄)", targetFood);
+            selectBox.add(newOption);
+        }
+        
+        selectBox.value = targetFood;
+        document.getElementById(`amount-${catIndex}`).value = record.amount || 0;
+        document.getElementById(`water-${catIndex}`).value = record.water || 0;
+        document.getElementById(`notes-${catIndex}`).value = record.notes || "";
+        
+        toggleDetails(catIndex);
+      }
+
+      function loadTodaySummary(catName) {
+        document.getElementById(`today-cal-val-${catName}`).innerHTML = '...'; document.getElementById(`today-water-val-${catName}`).innerHTML = '...';
+        google.script.run.withSuccessHandler(function(data) { document.getElementById(`today-cal-val-${catName}`).innerHTML = data.calories + ' <span>kcal</span>'; document.getElementById(`today-water-val-${catName}`).innerHTML = data.water + ' <span>ml</span>'; }).getTodayIntakeSummary(catName);
+      }
+
+      function loadChartData(catName) {
+        let start = document.getElementById('chart-start-date').value; 
+        let end = document.getElementById('chart-end-date').value;
+        
+        google.script.run.withSuccessHandler(function(milestones) {
+          window.catMilestones[catName] = (!milestones || milestones.error) ? [] : milestones;
+
+          google.script.run.withSuccessHandler(function(data) { if (data && !data.error) { renderChart(catName, data.labels, data.calories, data.water); applyMilestonesToCharts(catName); } }).getCatMonthlyIntakeStats(catName, start, end);
+          google.script.run.withSuccessHandler(function(data) { if (data && !data.error) renderScatterChart(catName, data.labels, data.wet, data.dry, data.sub, data.liq); }).getCatFeedingTimeStats(catName, start, end);
+          google.script.run.withSuccessHandler(function(data) { if (data && !data.error) { renderWeightChart(catName, data.labels, data.weight); applyMilestonesToCharts(catName); } }).getCatWeightStats(catName, start, end);
+          google.script.run.withSuccessHandler(function(data) { if (data && !data.error) renderPoopChart(catName, data.labels, data.normal, data.diarrhea, data.litter, data.vomit); }).getCatPoopStats(catName, start, end);
+          google.script.run.withSuccessHandler(function(data) { if (data && !data.error) { renderAppetiteChart(catName, data.labels, data.scores); applyMilestonesToCharts(catName); } }).getCatAppetiteStats(catName, start, end);
+
+        }).getMilestones(catName, start, end);
+      }
+
+      const milestonePalette = [
+        'rgba(244, 67, 54, 0.7)', 'rgba(33, 150, 243, 0.7)', 'rgba(76, 175, 80, 0.7)', 'rgba(255, 152, 0, 0.7)', 'rgba(156, 39, 176, 0.7)'
+      ];
+
+      // ✨ 100% 精準對位版：直接拿圖表的 X 軸標籤來配對，找不到就自動隱藏防擠壓
+      function applyMilestonesToCharts(catName) {
+        const rawMilestones = window.catMilestones[catName] || [];
+        if (rawMilestones.length === 0) return;
+
+        const uniqueMilestonesSet = new Set(rawMilestones.map(m => JSON.stringify(m)));
+        let uniqueMilestones = Array.from(uniqueMilestonesSet).map(s => JSON.parse(s));
+
+        uniqueMilestones.sort((a, b) => new Date(a.date) - new Date(b.date));
+
+        const annotations = {};
+        
+        if (uniqueMilestones.length > 0) {
+          uniqueMilestones.forEach((m, i) => {
+             let position = 'start'; 
+             let yAdjust = 0;
+             const lane = i % 4; 
+             
+             if (lane === 0) { 
+                 position = 'start'; yAdjust = 15;
+             } else if (lane === 1) { 
+                 position = 'end'; yAdjust = -15;
+             } else if (lane === 2) { 
+                 position = 'start'; yAdjust = 65;
+             } else if (lane === 3) { 
+                 position = 'end'; yAdjust = -65;
+             }
+             
+             const color = milestonePalette[i % milestonePalette.length];
+
+             let textContent = m.text;
+             if (m.text.length > 9) {
+                textContent = [];
+                for (let j = 0; j < m.text.length; j += 9) {
+                    textContent.push(m.text.substring(j, j + 9));
+                }
+             }
+
+             annotations['line' + i] = {
+                type: 'line', scaleID: 'x', value: m.date,
+                borderColor: color, borderWidth: 2, borderDash: [5, 5],
+                label: {
+                  display: true, 
+                  content: textContent, 
+                  position: position, 
+                  yAdjust: yAdjust,     
+                  backgroundColor: color.replace('0.7', '0.85'), 
+                  color: 'white', 
+                  font: { size: 10, weight: 'bold' },
+                  padding: 4,
+                  borderRadius: 4
+                }
+             };
+          });
+        }
+
+        const updatePlugin = (chartInstance) => {
+          if (chartInstance) {
+            if (!chartInstance.options.plugins) chartInstance.options.plugins = {};
+            chartInstance.options.plugins.annotation = { annotations: annotations };
+            chartInstance.update();
+          }
+        };
+
+        // 依序幫各個圖表加上紅線
+        if (chartInstances[catName]) updatePlugin(chartInstances[catName]);       // 健康趨勢圖 (飲食)
+        if (appetiteInstances[catName]) updatePlugin(appetiteInstances[catName]); // 食慾圖
+        if (weightInstances[catName]) updatePlugin(weightInstances[catName]);     // 體重圖
+        // ✨ 新增這行：把排泄與異常狀態圖也加進來！
+        if (poopInstances[catName]) updatePlugin(poopInstances[catName]);
+      }
+
+      function loadSharedWaterChart() {
+        let start = document.getElementById('chart-start-date').value; let end = document.getElementById('chart-end-date').value;
+        google.script.run.withSuccessHandler(function(response) { if (response && !response.error) renderSharedWaterChart(response.labels, response.data); }).getSharedWaterStats(start, end);
+      }
+
+      function renderChart(catName, labels, calories, water) {
+        const ctx = document.getElementById(`canvas-${catName}`).getContext('2d'); if (chartInstances[catName]) chartInstances[catName].destroy();
+        chartInstances[catName] = new Chart(ctx, { type: 'line', data: { labels: labels, datasets: [ { label: '熱量 (大卡)', data: calories, borderColor: '#ff9800', backgroundColor: 'rgba(255, 152, 0, 0.1)', tension: 0.3, fill: true, pointRadius: 2, pointHoverRadius: 4 }, { label: '水量 (毫升)', data: water, borderColor: '#2196f3', backgroundColor: 'rgba(33, 150, 243, 0.1)', tension: 0.3, fill: true, pointRadius: 2, pointHoverRadius: 4 } ] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 0, suggestedMax: 300 } }, plugins: { legend: { labels: { font: { size: 12 } } } }, interaction: { mode: 'index', intersect: false } } });
+      }
+
+      function renderScatterChart(catName, labels, wetData, dryData, subData, liqData) { 
+        const ctx = document.getElementById(`scatter-${catName}`).getContext('2d'); 
+        if (scatterInstances[catName]) scatterInstances[catName].destroy();
+        scatterInstances[catName] = new Chart(ctx, { 
+          type: 'line', 
+          data: { 
+            labels: labels, 
+            datasets: [ 
+              { label: '濕食', data: wetData, backgroundColor: '#2196f3', borderColor: '#2196f3', pointRadius: 2.5, pointHoverRadius: 5, showLine: false }, 
+              { label: '乾飼料', data: dryData, backgroundColor: '#ff9800', borderColor: '#ff9800', pointStyle: 'triangle', pointRadius: 2.5, pointHoverRadius: 5, showLine: false }, 
+              { label: '副食罐', data: subData, backgroundColor: '#9c27b0', borderColor: '#9c27b0', pointStyle: 'rectRounded', pointRadius: 2.5, pointHoverRadius: 5, showLine: false },
+              { label: '營養液', data: liqData, backgroundColor: '#00e5ff', borderColor: '#00e5ff', pointStyle: 'star', pointRadius: 5, pointHoverRadius: 7, showLine: false }
+            ] 
+          }, 
+          options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 0, max: 24, ticks: { stepSize: 4, callback: function(value) { return String(value).padStart(2, '0') + ':00'; } } } }, plugins: { tooltip: { callbacks: { label: function(context) { let h = Math.floor(context.parsed.y); let m = Math.round((context.parsed.y - h) * 60); return context.dataset.label + ' 放飯: ' + String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0'); } } } } } 
+        });
+      }
+
+      function renderWeightChart(catName, labels, weightData) {
+        const ctx = document.getElementById(`weight-${catName}`).getContext('2d'); if (weightInstances[catName]) weightInstances[catName].destroy();
+        const validWeights = weightData.filter(n => n !== null); let yMin = 0, yMax = 10; if (validWeights.length > 0) { yMin = Math.min(...validWeights) - 0.5; yMax = Math.max(...validWeights) + 0.5; }
+        weightInstances[catName] = new Chart(ctx, { type: 'line', data: { labels: labels, datasets: [{ label: '體重 (kg)', data: weightData, borderColor: '#4caf50', backgroundColor: 'rgba(76, 175, 80, 0.1)', tension: 0.3, fill: true, pointRadius: 4, pointHoverRadius: 6, spanGaps: true }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { suggestedMin: yMin, suggestedMax: yMax } }, plugins: { legend: { display: false } }, interaction: { mode: 'index', intersect: false } } });
+      }
+
+      function renderPoopChart(catName, labels, normal, diarrhea, litter, vomit) {
+        const ctx = document.getElementById(`poop-${catName}`).getContext('2d'); if (poopInstances[catName]) poopInstances[catName].destroy();
+        let safeNormal = normal || []; let safeDiarrhea = diarrhea || new Array(safeNormal.length || 0).fill(0); let safeLitter = litter || new Array(safeNormal.length || 0).fill(0); let safeVomit = vomit || new Array(safeNormal.length || 0).fill(0);
+        let maxVal = 0; if (safeNormal.length > 0) { maxVal = Math.max(...safeNormal.map((n, i) => (n || 0) + (safeDiarrhea[i] || 0) + (safeLitter[i] || 0) + (safeVomit[i] || 0))); } let yMax = maxVal > 2 ? maxVal + 1 : 3;
+        poopInstances[catName] = new Chart(ctx, { type: 'bar', data: { labels: labels, datasets: [{ label: '正常大便', data: safeNormal, backgroundColor: '#8d6e63', borderRadius: 4 }, { label: '拉肚子', data: safeDiarrhea, backgroundColor: '#e53935', borderRadius: 4 }, { label: '亂尿尿', data: safeLitter, backgroundColor: '#ff9800', borderRadius: 4 }, { label: '嘔吐', data: safeVomit, backgroundColor: '#8bc34a', borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true }, y: { stacked: true, min: 0, max: yMax, ticks: { stepSize: 1 } } }, plugins: { legend: { display: true, labels: { font: { size: 12 }, boxWidth: 12, padding: 10 } } }, interaction: { mode: 'index', intersect: false } } });
+      }
+
+      function renderAppetiteChart(catName, labels, scoreData) {
+        const ctx = document.getElementById(`appetite-${catName}`).getContext('2d'); if (appetiteInstances[catName]) appetiteInstances[catName].destroy();
+        appetiteInstances[catName] = new Chart(ctx, { type: 'line', data: { labels: labels, datasets: [{ label: '平均食慾 (分)', data: scoreData, borderColor: '#e91e63', backgroundColor: 'rgba(233, 30, 99, 0.1)', tension: 0.3, fill: true, pointRadius: 4, pointHoverRadius: 6, spanGaps: true }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 0, max: 5.5, ticks: { stepSize: 1 } } }, plugins: { legend: { display: false } }, interaction: { mode: 'index', intersect: false } } });
+      }
+
+      function renderSharedWaterChart(labels, waterData) {
+        const ctx = document.getElementById('shared-water-chart').getContext('2d'); if (sharedWaterChartInstance) sharedWaterChartInstance.destroy();
+        sharedWaterChartInstance = new Chart(ctx, { type: 'bar', data: { labels: labels, datasets: [{ label: '水碗消耗 (ml)', data: waterData, backgroundColor: '#00bcd4', borderRadius: 4 }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { min: 0, suggestedMax: Math.max(...waterData) > 200 ? null : 200 } }, plugins: { legend: { display: false } }, interaction: { mode: 'index', intersect: false } } });
+      }
+
+      function submitMilestone() {
+        if (IS_READONLY) return;
+        const text = document.getElementById('milestone-text').value.trim();
+        const dateVal = document.getElementById('date').value;
+        if (!text) { alert("請填寫事件內容喔！"); return; }
+        
+        const btn = document.getElementById('milestone-btn');
+        const status = document.getElementById('milestone-status');
+        btn.disabled = true; btn.innerText = "儲存中...";
+        
+        google.script.run.withSuccessHandler(function(res) {
+          btn.disabled = false; btn.innerText = "記錄醫療里程碑";
+          document.getElementById('milestone-text').value = "";
+          status.innerText = "✅ 已記錄！重新載入資料或調整區間就會出現紅線！"; status.style.color = "#4caf50";
+          setTimeout(() => status.innerText = "", 4000);
+          isDataLoaded[currentCat] = false; 
+        }).withFailureHandler(function(err) {
+          btn.disabled = false; btn.innerText = "記錄醫療里程碑";
+          status.innerText = "❌ 發生錯誤：" + err.message; status.style.color = "red";
+        }).saveMilestone(currentCat, dateVal, text);
+      }
+
+      function loadUnratedRecords(catName) { document.getElementById('unrated-container').style.display = 'none'; google.script.run.withSuccessHandler(renderUnratedRecords).getUnratedRecords(catName); }
+      function renderUnratedRecords(records) { const container = document.getElementById('unrated-container'); const list = document.getElementById('unrated-list'); list.innerHTML = ''; container.style.display = 'block'; if (records.length === 0) { list.innerHTML = '<div style="text-align: center; color: #4caf50; font-weight: bold; padding: 15px 0; font-size: 14px; background: #f1f8e9; border-radius: 8px;">🎉 太棒了！目前所有放飯紀錄都已評分完畢！</div>'; return; } records.slice(0, 3).forEach(rec => { list.innerHTML += `<div class="unrated-item" id="unrated-row-${rec.rowIndex}"><div class="unrated-info">🕒 ${rec.time} - 🥣 ${rec.foodName} (${rec.amount}g)</div><div class="rating-group"><button class="rating-btn" onclick="submitRating(${rec.rowIndex}, 1)" title="1分: 拒吃">🤢</button><button class="rating-btn" onclick="submitRating(${rec.rowIndex}, 2)" title="2分: 剩下一半">😕</button><button class="rating-btn" onclick="submitRating(${rec.rowIndex}, 3)" title="3分: 勉強吃完">🙂</button><button class="rating-btn" onclick="submitRating(${rec.rowIndex}, 4)" title="4分: 順利吃光">😋</button><button class="rating-btn" onclick="submitRating(${rec.rowIndex}, 5)" title="5分: 狼吞虎嚥">🤩</button></div></div>`; }); }
+      function submitRating(rowIndex, score) { const rowDiv = document.getElementById(`unrated-row-${rowIndex}`); rowDiv.style.opacity = '0.4'; rowDiv.style.pointerEvents = 'none'; google.script.run.withSuccessHandler(function(res) { if (res.success) { rowDiv.remove(); isDataLoaded[currentCat] = false; if (document.getElementById('unrated-list').children.length === 0) { document.getElementById('unrated-list').innerHTML = '<div style="text-align: center; color: #4caf50; font-weight: bold; padding: 15px 0; font-size: 14px; background: #f1f8e9; border-radius: 8px;">🎉 太棒了！目前所有放飯紀錄都已評分完畢！</div>'; } } else { alert("評分失敗：" + res.message); rowDiv.style.opacity = '1'; rowDiv.style.pointerEvents = 'auto'; } }).updateAppetiteScore(currentCat, rowIndex, score); }
+
+      function submitForm() {
+        if (IS_READONLY) return; 
+        const btn = document.getElementById('submitBtn'); const status = document.getElementById('status'); 
+        let records = [];
+        categories.forEach((cat, index) => {
+          const foodName = document.getElementById(`food-select-${index}`).value;
+          if (foodName !== "") {
+            let rawAmount = document.getElementById(`amount-${index}`).value; let rawWater = document.getElementById(`water-${index}`).value;
+            records.push({ category: cat, foodName: foodName, amount: rawAmount === "" ? 0 : rawAmount, water: rawWater === "" ? 0 : rawWater, notes: document.getElementById(`notes-${index}`).value });
+          }
+        });
+        const litterType = document.getElementById('litter-type').value; const litterNotes = document.getElementById('litter-notes').value;
+        if (records.length === 0 && litterType === "") { alert("請至少選擇一種食物或填寫紀錄喔！"); return; }
+        btn.disabled = true; btn.innerText = "寫入資料庫中...";
+        const dateVal = document.getElementById('date').value; const timeVal = document.getElementById('time').value;
+        const finishSubmit = (msg) => { status.innerText = msg; status.style.color = "#4caf50"; categories.forEach((cat, index) => { document.getElementById(`food-select-${index}`).value = ""; document.getElementById(`amount-${index}`).value = "0"; document.getElementById(`water-${index}`).value = "0"; document.getElementById(`notes-${index}`).value = ""; document.getElementById(`details-${index}`).style.display = "none"; }); document.getElementById('litter-type').value = ""; document.getElementById('litter-notes').value = ""; document.getElementById('litter-details').style.display = "none"; refreshData(); btn.disabled = false; btn.innerText = "送出紀錄"; setTimeout(() => { status.innerText = ""; }, 3000); };
+        const handleError = (error) => { status.innerText = "發生錯誤：" + error.message; status.style.color = "red"; btn.disabled = false; btn.innerText = "重新送出"; };
+        if (records.length > 0 && litterType !== "") { const formData = { catName: currentCat, date: dateVal, time: timeVal, records: records }; google.script.run.withSuccessHandler(() => { google.script.run.withSuccessHandler(() => finishSubmit("食物與異常紀錄已儲存！")).withFailureHandler(handleError).addLitterRecord(currentCat, dateVal, timeVal, litterType, litterNotes); }).withFailureHandler(handleError).addCatRecord(formData); } else if (records.length > 0) { const formData = { catName: currentCat, date: dateVal, time: timeVal, records: records }; google.script.run.withSuccessHandler(() => finishSubmit("食物紀錄已儲存！")).withFailureHandler(handleError).addCatRecord(formData); } else if (litterType !== "") { google.script.run.withSuccessHandler(() => finishSubmit("異常紀錄已儲存！")).withFailureHandler(handleError).addLitterRecord(currentCat, dateVal, timeVal, litterType, litterNotes); }
+      }
+
+      function askAIAssistant() {
+        const start = document.getElementById('ai-start-date').value; const end = document.getElementById('ai-end-date').value; const q = document.getElementById('ai-question').value; const btn = document.getElementById('ai-submit-btn'); const resBox = document.getElementById('ai-response-box');
+        if (!start || !end) { alert("請選擇日期區間！"); return; }
+        if (!q.trim()) { alert("請告訴 AI 你想問什麼！"); return; }
+        btn.disabled = true; btn.innerText = "AI 正在調閱病歷與思考中... ⏳"; resBox.style.display = 'block'; resBox.innerHTML = '<div style="text-align: center; color: #888;">正在分析 '+currentCat+' 從 '+start+' 到 '+end+' 的健康數據...</div>';
+        google.script.run.withSuccessHandler(function(response) { btn.disabled = false; btn.innerText = "🧠 請 AI 分析"; let formattedText = response.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/\n/g, '<br>'); resBox.innerHTML = formattedText; }).withFailureHandler(function(err) { btn.disabled = false; btn.innerText = "🧠 重新分析"; resBox.innerHTML = '<span style="color: red;">呼叫失敗：' + err.message + '</span>'; }).askGeminiAboutCat(currentCat, q, start, end);
+      }
+
+      function exportReportToPDF() {
+        const emailInput = document.getElementById('export-email').value; if (!emailInput || !emailInput.includes('@')) { alert("請輸入至少一個有效的 Email 信箱喔！"); return; }
+        const customTitle = document.getElementById('export-title').value.trim(); const includeAI = document.getElementById('export-ai-check').checked; const targetCat = document.getElementById('export-cat-select').value; const start = document.getElementById('chart-start-date').value; const end = document.getElementById('chart-end-date').value; const btn = document.getElementById('export-btn'); const status = document.getElementById('export-status');
+        btn.disabled = true; btn.innerText = includeAI ? "正在擷取圖表與呼叫 AI 分析... ⏳" : "正在擷取圖表畫面... 📸"; status.innerText = "";
+        try {
+          const chartsBase64 = { intake: document.getElementById(`canvas-${targetCat}`).toDataURL('image/png', 1.0), scatter: document.getElementById(`scatter-${targetCat}`).toDataURL('image/png', 1.0), weight: document.getElementById(`weight-${targetCat}`).toDataURL('image/png', 1.0), poop: document.getElementById(`poop-${targetCat}`).toDataURL('image/png', 1.0), appetite: document.getElementById(`appetite-${targetCat}`).toDataURL('image/png', 1.0) };
+          btn.innerText = "正在排版並寄送 Email... 🚀";
+          google.script.run.withSuccessHandler(function(res) { btn.disabled = false; btn.innerText = "📥 產生並寄出報告"; status.innerText = "✅ 報告已成功寄出！請去信箱收信囉！"; status.style.color = "#2e7d32"; setTimeout(() => { status.innerText = ""; }, 5000); }).withFailureHandler(function(err) { btn.disabled = false; btn.innerText = "📥 重新寄送報告"; status.innerText = "❌ 寄送失敗：" + err.message; status.style.color = "red"; }).generateAndEmailPDF(targetCat, start, end, emailInput, chartsBase64, customTitle, includeAI);
+        } catch (e) { alert("圖表尚未完全載入，請稍等一下再按匯出喔！"); btn.disabled = false; btn.innerText = "📥 產生並寄出報告"; }
+      }
+    </script>
+  </body>
+</html>
