@@ -1,5 +1,3 @@
-// ================= ✨ AI 獸醫助理系統 =================
-
 function checkAvailableModels() {
   const API_KEY = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY') || CONFIG.GEMINI_API_KEY;
   const url = "https://generativelanguage.googleapis.com/v1beta/models?key=" + API_KEY;
@@ -9,7 +7,6 @@ function checkAvailableModels() {
 }
 
 
-// 1. 幫 AI 整理病歷資料 (將吃飯、貓砂與重大事件紀錄合併並按時間排序)
 function getRawDataForAI(catName, startStr, endStr) {
   const ss = getSpreadsheet();
   const startDate = new Date(startStr);
@@ -18,7 +15,6 @@ function getRawDataForAI(catName, startStr, endStr) {
 
   let logData = [];
 
-  // 拆取吃飯資料
   const foodSheet = getSheet(catName + "吃飯");
   if (foodSheet) {
     let fData = foodSheet.getDataRange().getValues();
@@ -34,14 +30,14 @@ function getRawDataForAI(catName, startStr, endStr) {
         let water = toNumber(fData[i][6], 0);
         let notes = toString(fData[i][7]).trim();
         logData.push({ 
-          timestamp: rowDate.getTime() + parseInt(timeStr.replace(':','')), // 用來排序
+          timestamp: rowDate.getTime() + parseInt(timeStr.replace(':','')),
           text: `[${dateStr} ${timeStr}] 飲食: 吃了 ${foodName} ${amount}g, 喝水 ${water}ml。備註: ${notes}` 
         });
       }
     }
   }
 
-  // 抓取貓砂與異常資料
+
   const litterSheet = getSheet(CONFIG.SHEETS.LITTER);
   if (litterSheet) {
     let lData = litterSheet.getDataRange().getValues();
@@ -55,7 +51,7 @@ function getRawDataForAI(catName, startStr, endStr) {
         let timeStr = formatTime(timeObj);
         let notes = toString(lData[i][3]).trim();
         logData.push({ 
-          timestamp: rowDate.getTime() + parseInt(timeStr.replace(':','')), // 用來排序
+          timestamp: rowDate.getTime() + parseInt(timeStr.replace(':','')),
           text: `[${dateStr} ${timeStr}] 排泄/異常: ${notes}` 
         });
       }
@@ -95,17 +91,14 @@ function getRawDataForAI(catName, startStr, endStr) {
 
 // 2. 呼叫 Gemini API 進行分析
 function askGeminiAboutCat(catName, question, startStr, endStr) {
-  // 🔥🔥🔥 請把下面這行的引號內容，換成你的 API Key 🔥🔥🔥
   const API_KEY = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY') || CONFIG.GEMINI_API_KEY;
   
-  if (API_KEY.includes("請在這裡貼上")) {
-    throw new Error("請先到 .gs 檔案中填寫你的 Gemini API Key！");
+  if (API_KEY && API_KEY.includes("請在這裡貼上")) {
+    throw new Error("請先到 .gs 檔案中填宫你的 Gemini API Key！");
   }
 
-  // 麻婆娣出這個區間的完整貓咪病歷 (現在已經包含重大事件了)
   const logText = getRawDataForAI(catName, startStr, endStr);
 
-  // 🌟 組合給 AI 的終極提示詞 (Prompt) -> 加上了重大事件的提醒
   const prompt = `你現在是一位專業、細心且充滿同理心的貓咪獸醫助理。
 請根據以下這段期間內「${catName}」的真實健康紀錄，來回答主人的問題。
 如果紀錄中有出現「亂尿尿」、「拉肚子」、「嘔吐」或是食水量急遽減少，請特別提醒主人注意。

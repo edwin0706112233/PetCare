@@ -1,23 +1,16 @@
-// ================= ✨ 產生 PDF 報告並寄送 Email (支援自訂信件主旨、多群發、AI分析) =================
-
 function generateAndEmailPDF(catName, startDate, endDate, emails, chartsBase64, customSubject, includeAI) {
   try {
-    // 1. 處理信件主旨 (如果有填就用使用者的，沒填就用預設的)
     const emailSubject = customSubject ? customSubject : `🐾 【${catName}】健康分析報告 (${startDate} ~ ${endDate})`;
     
-    // PDF 內頁的正式標題 (固定不變)
     const pdfFormalTitle = `🐾 ${catName} 的專屬健康分析報告`;
     
-    // 2. 處理多重 Email (清理空白，並用逗號組合，讓 Google MailApp 能夠辨識群發)
     const emailList = emails.split(',').map(e => e.trim()).filter(e => e !== "").join(',');
 
-    // 3. ✨ 如果有勾選 AI 分析，就在背景偷偷呼叫 Gemini！
     let aiSectionHtml = "";
     if (includeAI) {
       const API_KEY = PropertiesService.getScriptProperties().getProperty('GEMINI_API_KEY') || CONFIG.GEMINI_API_KEY;
       
       const logText = getRawDataForAI(catName, startDate, endDate);
-      const tz = CONFIG.TIMEZONE;
       const prompt = `你是一位專業且細心的貓咪獸醫助理。這是一份 ${catName} 從 ${startDate} 到 ${endDate} 的健康數據：\n${logText}\n請針對這些數據寫一段綜合分析摘要（250字以內），指出值得注意的異常（如嘔吐、亂尿尿、水量變少），並給出專業建議。請用繁體中文，語氣溫和客觀。`;
       
       const url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent?key=" + API_KEY;
@@ -42,7 +35,7 @@ function generateAndEmailPDF(catName, startDate, endDate, emails, chartsBase64, 
       `;
     }
 
-    // 4. 排版最終的 PDF HTML
+
     let htmlContent = `
       <html>
         <head>
@@ -92,15 +85,12 @@ function generateAndEmailPDF(catName, startDate, endDate, emails, chartsBase64, 
       </html>
     `;
 
-    // 5. 轉換成 PDF
     let blob = Utilities.newBlob(htmlContent, MimeType.HTML).getAs(MimeType.PDF);
-    // 讓檔案名稱也是乾淨的預設名稱
     blob.setName(`${catName}_健康報告_${startDate}.pdf`);
 
-    // 6. 寄出 Email！支援群發，並套用使用者自訂的信件主旨！
     MailApp.sendEmail({
       to: emailList,
-      subject: emailSubject,  // ✨ 這裡套用使用者輸入的信件標題
+      subject: emailSubject,
       htmlBody: `<p>您好！</p><p>附件是 <b>${catName}</b> 從 ${startDate} 到 ${endDate} 的健康分析報告。</p><p>此報告由您的專屬貓咪健康管家自動產生，祝您的貓咪健康快樂！🐱</p>`,
       attachments: [blob]
     });

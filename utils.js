@@ -1,4 +1,4 @@
-// ================= ✨ 共用工具函數庫 =================
+// ================= 共用工具函數庫 =================
 
 /**
  * 取得 Google Sheet 實例
@@ -33,7 +33,6 @@ function getCatSheetName(userId) {
  * @returns {string} 對應的 Sheet 名稱
  */
 function getCatSheetByEvent(eventName) {
-  // 此函式用於排程中取得貓咪名稱
   return eventName ? CONFIG.SHEETS.FENDA_FEED : CONFIG.SHEETS.FENDA_FEED;
 }
 
