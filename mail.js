@@ -88,12 +88,15 @@ function generateAndEmailPDF(catName, startDate, endDate, emails, chartsBase64, 
     let blob = Utilities.newBlob(htmlContent, MimeType.HTML).getAs(MimeType.PDF);
     blob.setName(`${catName}_健康報告_${startDate}.pdf`);
 
-    MailApp.sendEmail({
-      to: emailList,
-      subject: emailSubject,
-      htmlBody: `<p>您好！</p><p>附件是 <b>${catName}</b> 從 ${startDate} 到 ${endDate} 的健康分析報告。</p><p>此報告由您的專屬貓咪健康管家自動產生，祝您的貓咪健康快樂！🐱</p>`,
-      attachments: [blob]
-    });
+    GmailApp.sendEmail(
+      emailList,      
+      emailSubject,   
+      "您好，附件是貓咪健康分析報告。", 
+      {
+        htmlBody: `<p>您好！</p><p>附件是 <b>${catName}</b> 從 ${startDate} 到 ${endDate} 的健康分析報告。</p><p>此報告由您的專屬貓咪健康管家自動產生，祝您的貓咪健康快樂！🐱</p>`,
+        attachments: [blob]
+      }
+    );
 
     return { success: true };
   } catch (error) {
